@@ -3,60 +3,109 @@
 
 namespace KISpMV {
 
-template <typename elttype, typename idxtype = int>
-class Vector : public std::vector<elttype> {
-    typedef std::vector<elttype> super;
+// --------------------------------------------------------------------------
+// forward declaration
 
-    void eval() {
-        std::cout << "Eval V" << std::endl;
-    }
+template <typename elt_t> class CpuCsrMatrix;
+template <typename elt_t> class CpuCooMatrix;
 
-public:
-    Vector(int nElts) : super(nElts) {
-    }
 
-    Vector& operator=(Vector<elttype> o) {
-        std::cout << "Assign!" << std::endl;
-        return *this;
-    }
+// --------------------------------------------------------------------------
+// main matrix class
 
-    elttype& operator[](idxtype i) {
-        std::cout << "Access!" << std::endl;
-        this->eval();
-        return this->super::operator[](i);
+template <typename elt_t>
+class Matrix {
+
+  protected:
+
+    int m, n;
+
+    Matrix(int m, int n)
+      : m(m), n(n)
+    { }
+
+  public:
+
+    virtual int nnz() = 0;
+
+    // factory to create matrices
+    static Matrix<elt_t>* CreateFromCSR(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+    {
+        if (1) {
+            return CpuCsrMatrix<elt_t>::CreateFromCSR(m,n,rowPtrs,colInds,vals);;
+        } else {
+            return CpuCooMatrix<elt_t>::CreateFromCSR(m,n,rowPtrs,colInds,vals);;
+        }
     }
 };
 
-template <typename ytype,
-          typename mtype,
-          typename xtype,
-          typename idxtype = int>
-class Matrix {
+// --------------------------------------------------------------------------
+// concrete matrix classes
 
-    idxtype m, n;
+template <typename elt_t>
+class CpuCsrMatrix : Matrix<elt_t> {
 
-    Matrix(idxtype m, idxtype n)
-        : m(m), n(n)
-    { }
+    typedef Matrix<elt_t> super;
 
-    void eval() {
-        std::cout << "Eval M" << std::endl;
+    std::vector<int>   &rowPtrs,
+                       &colInds;
+    std::vector<elt_t> &vals;
+
+    CpuCsrMatrix(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+      : super(m,n), rowPtrs(rowPtrs), colInds(colInds), vals(vals) {
+          std::cout << "Made CpuCsrMatrix" << std::endl;
     }
 
-public:
-    static Matrix
-    CreateFromCSR(idxtype m, idxtype n, idxtype *rowPtrs, idxtype *colInds, mtype *vals) {
-        return Matrix(m, n);
+  public:
+
+    virtual int nnz() {
+        return rowPtrs[super::m];
     }
 
-    Vector<ytype> operator*(std::vector<xtype>& x) {
-        std::cout << "Multiply MV!" << std::endl;
-        return Vector<ytype>(m);
+    static Matrix<elt_t>* CreateFromCSR(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+    {
+        return (Matrix<elt_t>*) new CpuCsrMatrix<elt_t>(m, n, rowPtrs, colInds, vals);
+    }
+};
+
+template <typename elt_t>
+class CpuCooMatrix : Matrix<elt_t> {
+
+    typedef Matrix<elt_t> super;
+
+    std::vector<int>   &rowInds,
+                       &colInds;
+    std::vector<elt_t> &vals;
+
+    CpuCooMatrix(int m, int n,
+        std::vector<int> &rowInds,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+      : super(m,n), rowInds(rowInds), colInds(colInds), vals(vals) {
+          std::cout << "Made CpuCooMatrix" << std::endl;
     }
 
-    Matrix operator*(Matrix<ytype,mtype,xtype,idxtype> o) {
-        std::cout << "Multiply MM!" << std::endl;
-        return Matrix(m,n);
+  public:
+
+    virtual int nnz() {
+        return rowInds.size();
+    }
+
+    static Matrix<elt_t>* CreateFromCSR(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+    {
+        return (Matrix<elt_t>*) new CpuCooMatrix<elt_t>(m, n, rowPtrs, colInds, vals);
     }
 };
 
