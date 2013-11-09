@@ -33,7 +33,8 @@ int main(int argc, char *argv[]) {
 
     std::vector<Edge> edges(nnz);
     EMat Me = EMat::CreateFromCSR(m, n, rowPtrs, colInds, edges);
-    NVec xn(n), yn(m);
+    NVec xn = NVec::Create(n),
+         yn = NVec::Create(m);
     yn = Me * xn;
     Node *ndata = &yn[0];
 

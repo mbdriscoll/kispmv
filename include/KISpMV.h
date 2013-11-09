@@ -6,67 +6,119 @@ namespace KISpMV {
 // --------------------------------------------------------------------------
 // forward declaration
 
-template <typename elt_t> class CpuCsrMatrix;
-template <typename elt_t> class CpuCooMatrix;
+template <typename elt_t> class Matrix;
+template <typename elt_t> class Vector;
 
 
 // --------------------------------------------------------------------------
 // main matrix classes
 
-template <typename elt_t>
-class Vector : public std::vector<elt_t> {
-    typedef std::vector<elt_t> super;
+class ASTNode {
+  public:
+    virtual void dump() {
+        std::cout << "(astnode)";
+    }
+
+    ASTNode operator*(ASTNode rhs) {
+        return *this;
+    }
+
+    virtual std::ostream& operator<<(std::ostream& out) {
+        return out << "foo";
+    }
+};
+
+class ASTNodeRef {
+  public:
+    ASTNode *node;
+
+    ASTNodeRef(ASTNode *o)
+      : node(o)
+    {  }
+};
+
+class MatrixNode : public ASTNode {
+    int m, n;
+
+public:
+    MatrixNode(int m, int n)
+      : m(m), n(n)
+    {  }
+
+    int nnz() {
+        return 1337;
+    }
+
+    virtual void dump() {
+        std::cout << "(matrix "
+            << m << " " << n << " "
+            << nnz() << ")";
+    }
+};
+
+class MultNode : public ASTNode {
+    ASTNode *lhs, *rhs;
 
   public:
-    Vector(int nElems, elt_t elt = elt_t())
-      : super(nElems)
-    { }
+    MultNode(ASTNode *lhs, ASTNode *rhs)
+      : lhs(lhs), rhs(rhs)
+    {  }
+
+    virtual void dump() {
+        std::cout << "(* ";
+        lhs->dump();
+        std::cout << " ";
+        rhs->dump();
+        std::cout << ")";;
+    }
+};
+
+class VectorNode : public ASTNode {
+    virtual void dump() {
+        std::cout << "(vector 1338)";
+    }
 };
 
 template <typename elt_t>
-class Matrix {
-
-  protected:
-
-    int m, n;
-    std::vector<int>   rowPtrs,
-                       colInds;
-    std::vector<elt_t> vals;
-
-    Matrix(int m, int n,
-        std::vector<int> &rowPtrs,
-        std::vector<int> &colInds,
-        std::vector<elt_t> &vals)
-      : m(m), n(n), rowPtrs(rowPtrs), colInds(colInds), vals(vals)
+class Matrix : public ASTNodeRef {
+    Matrix(ASTNode *n)
+      : ASTNodeRef(n)
     { }
 
-  public:
-
-    template <typename x_elt_t>
-    Vector<x_elt_t> operator*(Vector<x_elt_t> x) {
-        Vector<x_elt_t> y(m, x_elt_t());
-        for (int i = 0; i < m; i++) {
-            for (int idx = rowPtrs[i]; idx < rowPtrs[i+1]; idx++) {
-                y[i] += vals[idx] * x[colInds[idx]];
-            }
-        }
-        return y;
-    }
-
-    int nnz() {
-        return rowPtrs[m];
-    }
-
-    // factory to create matrices
+public:
     static Matrix<elt_t> CreateFromCSR(int m, int n,
         std::vector<int> &rowPtrsSrc,
         std::vector<int> &colIndsSrc,
         std::vector<elt_t> &valsSrc)
     {
-        std::vector<int> *rowPtrs = new std::vector<int>(rowPtrsSrc);
-        std::vector<int> *colInds = new std::vector<int>(colIndsSrc);
-        std::vector<elt_t> *vals  = new std::vector<elt_t>(valsSrc);
-        return Matrix(m, n, *rowPtrs, *colInds, *vals);
+        ASTNode* mn = new MatrixNode(m, n);
+        return Matrix(mn);
+    }
+
+    template <typename VT>
+    Vector<VT> operator*(Vector<VT> v) {
+        return Vector<VT>( new MultNode(node, v.node) );
+    }
+};
+
+template <typename elt_t>
+class Vector : public ASTNodeRef {
+public:
+    Vector(ASTNode *underlying)
+      : ASTNodeRef(underlying)
+    {  }
+
+    static Vector<elt_t> Create(int nElems)
+    {
+        ASTNode* vn = new VectorNode();
+        return Vector(vn);
+    }
+
+    elt_t& operator[](int i) {
+        std::vector<elt_t> tmp(10);
+        node->dump();
+        std::cout << std::endl;
+        return tmp[0];
     }
 };
 

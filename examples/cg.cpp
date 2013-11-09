@@ -13,10 +13,12 @@ int main(int argc, char *argv[]) {
 
     std::vector<double> vals(nnz);
     DMat M = DMat::CreateFromCSR(m, n, rowPtrs, colInds, vals);
-    DVec x = DVec::Create(n),
-         y = DVec::Create(m);
-    y = M * x;
-    double *data = &y[0];
+    DVec x = DVec::Create(n);
+
+    for (int i = 0; i < 3; i++)
+        x = M * x;
+
+    double *data = &x[0];
 
     return 0;
 }

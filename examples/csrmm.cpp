@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
 
     std::vector<float> coeffs(nnz);
     FMat Mf = FMat::CreateFromCSR(m, n, rowPtrs, colInds, coeffs);
-    VVec xv(n), yv(m);
+    VVec xv = VVec::Create(n),
+         yv = VVec::Create(m);
     yv = Mf * xv;
     Point *vdata = &yv[0];
 

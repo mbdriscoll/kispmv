@@ -20,8 +20,8 @@ class Contact {
     }
 };
 
-typedef KISpMV::Vector<Particle>    PVec;
-typedef KISpMV::Matrix<Contact>     IMat;
+typedef KISpMV::Vector<Particle> PVec;
+typedef KISpMV::Matrix<Contact>  IMat;
 
 int main(int argc, char *argv[]) {
 
@@ -30,7 +30,8 @@ int main(int argc, char *argv[]) {
 
     std::vector<Contact> contacts(nnz);
     IMat Mi = IMat::CreateFromCSR(m, n, rowPtrs, colInds, contacts);
-    PVec xp(n), yp(m);
+    PVec xp = PVec::Create(n),
+         yp = PVec::Create(m);
     yp = Mi * xp;
     Particle *pdata = &yp[0];
 
