@@ -9,6 +9,10 @@ namespace KISpMV {
 template <typename elt_t> class Matrix;
 template <typename elt_t> class Vector;
 
+template <typename elt_t> class CpuCsrMatrixNode;
+template <typename elt_t> class CpuCooMatrixNode;
+template <typename elt_t> class CpuDenseVectorNode;
+template <typename elt_t> class CpuSparseVectorNode;
 
 // --------------------------------------------------------------------------
 // main matrix classes
@@ -37,7 +41,9 @@ class ASTNodeRef {
     {  }
 };
 
+template <typename elt_t>
 class MatrixNode : public ASTNode {
+protected:
     int m, n;
 
 public:
@@ -73,31 +79,40 @@ class MultNode : public ASTNode {
     }
 };
 
+template <typename elt_t>
 class VectorNode : public ASTNode {
     virtual void dump() {
-        std::cout << "(vector 1338)";
+        std::cout << "vector";
     }
 };
 
 template <typename elt_t>
 class Matrix : public ASTNodeRef {
+public:
     Matrix(ASTNode *n)
       : ASTNodeRef(n)
     { }
 
-public:
-    static Matrix<elt_t> CreateFromCSR(int m, int n,
-        std::vector<int> &rowPtrsSrc,
-        std::vector<int> &colIndsSrc,
-        std::vector<elt_t> &valsSrc)
-    {
-        ASTNode* mn = new MatrixNode(m, n);
-        return Matrix(mn);
-    }
-
     template <typename VT>
     Vector<VT> operator*(Vector<VT> v) {
         return Vector<VT>( new MultNode(node, v.node) );
+    }
+
+    static Matrix<elt_t> CreateFromCSR(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+    {
+        int format_id = 0;
+        switch (format_id) {
+            default:
+            case 0:
+                return CpuCsrMatrixNode<elt_t>::CreateFromCSR(m, n, rowPtrs, colInds, vals);
+                break;
+            case 1:
+                return CpuCooMatrixNode<elt_t>::CreateFromCSR(m, n, rowPtrs, colInds, vals);
+                break;
+        }
     }
 };
 
@@ -110,8 +125,16 @@ public:
 
     static Vector<elt_t> Create(int nElems)
     {
-        ASTNode* vn = new VectorNode();
-        return Vector(vn);
+        int format_id = 0;
+        switch (format_id) {
+            default:
+            case 0:
+                return Vector( new CpuDenseVectorNode<elt_t>() );
+                break;
+            case 1:
+                return Vector( new CpuSparseVectorNode<elt_t>() );
+                break;
+        }
     }
 
     elt_t& operator[](int i) {
@@ -119,6 +142,103 @@ public:
         node->dump();
         std::cout << std::endl;
         return tmp[0];
+    }
+};
+
+template <typename elt_t>
+class CpuCsrMatrixNode : public MatrixNode<elt_t> {
+    typedef MatrixNode<elt_t> super;
+
+    std::vector<int> rowPtrs, colInds;
+    std::vector<elt_t> vals;
+
+    CpuCsrMatrixNode(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+      : super(m,n), rowPtrs(rowPtrs), colInds(colInds), vals(vals)
+    {  }
+
+public:
+    static Matrix<elt_t> CreateFromCSR(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+    {
+        ASTNode* mn = new CpuCsrMatrixNode<elt_t>(m, n, rowPtrs, colInds, vals);
+        return Matrix<elt_t>(mn);
+    }
+
+    virtual void dump() {
+        std::cout << "(cpu-csr-matrix " << nnz() << ")";
+    }
+
+    virtual int nnz() {
+        return rowPtrs[super::m];
+    }
+};
+
+template <typename elt_t>
+class CpuCooMatrixNode : public MatrixNode<elt_t> {
+    typedef MatrixNode<elt_t> super;
+
+    std::vector<int> rowInds, colInds;
+    std::vector<elt_t> vals;
+
+    CpuCooMatrixNode(int m, int n,
+        std::vector<int> &rowInds,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+      : super(m,n), rowInds(rowInds), colInds(colInds), vals(vals)
+    {  }
+
+public:
+    static Matrix<elt_t> CreateFromCSR(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+    {
+        // FIXME convert rowPtrs to rowInds
+        ASTNode* mn = new CpuCooMatrixNode<elt_t>(m, n, rowPtrs, colInds, vals);
+        return Matrix<elt_t>(mn);
+    }
+
+    virtual void dump() {
+        std::cout << "(cpu-coo-matrix " << nnz() << ")";
+    }
+
+    virtual int nnz() {
+        return vals.size();
+    }
+};
+
+template <typename elt_t>
+class CpuDenseVectorNode :
+    public VectorNode<elt_t>,
+    public std::vector<elt_t> {
+
+    virtual void dump() {
+        std::cout << "(cpu-dense-vector " << nnz() << ")";
+    }
+
+    virtual int nnz() {
+        return std::vector<elt_t>::size();
+    }
+};
+
+template <typename elt_t>
+class CpuSparseVectorNode : public VectorNode<elt_t> {
+
+protected:
+    std::vector<elt_t> vals;
+    std::vector<int> inds;
+
+    virtual void dump() {
+        std::cout << "(cpu-sparse-vector " << nnz() << ")";
+    }
+
+    virtual int nnz() {
+        return vals.size();
     }
 };
 
