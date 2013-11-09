@@ -11,6 +11,7 @@ template <typename elt_t> class Vector;
 
 template <typename elt_t> class CpuCsrMatrixNode;
 template <typename elt_t> class CpuCooMatrixNode;
+template <typename elt_t> class HybMatrixNode;
 template <typename elt_t> class CpuDenseVectorNode;
 template <typename elt_t> class CpuSparseVectorNode;
 
@@ -19,6 +20,10 @@ template <typename elt_t> class CpuSparseVectorNode;
 
 class ASTNode {
   public:
+
+    virtual void eval() {
+    }
+
     virtual void dump() {
         std::cout << "(astnode)";
     }
@@ -50,16 +55,6 @@ public:
     MatrixNode(int m, int n)
       : m(m), n(n)
     {  }
-
-    int nnz() {
-        return 1337;
-    }
-
-    virtual void dump() {
-        std::cout << "(matrix "
-            << m << " " << n << " "
-            << nnz() << ")";
-    }
 };
 
 class MultNode : public ASTNode {
@@ -81,9 +76,6 @@ class MultNode : public ASTNode {
 
 template <typename elt_t>
 class VectorNode : public ASTNode {
-    virtual void dump() {
-        std::cout << "vector";
-    }
 };
 
 template <typename elt_t>
@@ -105,12 +97,15 @@ public:
     {
         int format_id = 0;
         switch (format_id) {
-            default:
-            case 0:
-                return CpuCsrMatrixNode<elt_t>::CreateFromCSR(m, n, rowPtrs, colInds, vals);
+            case 2:
+                return HybMatrixNode<elt_t>::CreateFromCSR(m, n, rowPtrs, colInds, vals);
                 break;
             case 1:
                 return CpuCooMatrixNode<elt_t>::CreateFromCSR(m, n, rowPtrs, colInds, vals);
+                break;
+            default:
+            case 0:
+                return CpuCsrMatrixNode<elt_t>::CreateFromCSR(m, n, rowPtrs, colInds, vals);
                 break;
         }
     }
@@ -152,6 +147,8 @@ class CpuCsrMatrixNode : public MatrixNode<elt_t> {
     std::vector<int> rowPtrs, colInds;
     std::vector<elt_t> vals;
 
+public:
+
     CpuCsrMatrixNode(int m, int n,
         std::vector<int> &rowPtrs,
         std::vector<int> &colInds,
@@ -159,7 +156,6 @@ class CpuCsrMatrixNode : public MatrixNode<elt_t> {
       : super(m,n), rowPtrs(rowPtrs), colInds(colInds), vals(vals)
     {  }
 
-public:
     static Matrix<elt_t> CreateFromCSR(int m, int n,
         std::vector<int> &rowPtrs,
         std::vector<int> &colInds,
@@ -176,6 +172,7 @@ public:
     virtual int nnz() {
         return rowPtrs[super::m];
     }
+
 };
 
 template <typename elt_t>
@@ -185,6 +182,8 @@ class CpuCooMatrixNode : public MatrixNode<elt_t> {
     std::vector<int> rowInds, colInds;
     std::vector<elt_t> vals;
 
+public:
+
     CpuCooMatrixNode(int m, int n,
         std::vector<int> &rowInds,
         std::vector<int> &colInds,
@@ -192,7 +191,6 @@ class CpuCooMatrixNode : public MatrixNode<elt_t> {
       : super(m,n), rowInds(rowInds), colInds(colInds), vals(vals)
     {  }
 
-public:
     static Matrix<elt_t> CreateFromCSR(int m, int n,
         std::vector<int> &rowPtrs,
         std::vector<int> &colInds,
@@ -209,6 +207,44 @@ public:
 
     virtual int nnz() {
         return vals.size();
+    }
+};
+
+template <typename elt_t>
+class HybMatrixNode : public MatrixNode<elt_t> {
+    typedef MatrixNode<elt_t> super;
+
+    ASTNode *part_one,
+            *part_two;
+
+    HybMatrixNode(int m, int n,
+      ASTNode *p1, ASTNode *p2)
+      : super(m,n), part_one(p1), part_two(p2)
+    {  }
+
+public:
+    static Matrix<elt_t> CreateFromCSR(int m, int n,
+        std::vector<int> &rowPtrs,
+        std::vector<int> &colInds,
+        std::vector<elt_t> &vals)
+    {
+        // FIXME convert rowPtrs to rowInds
+        Matrix<elt_t> p1 = Matrix<elt_t>::CreateFromCSR(m, n, rowPtrs, colInds, vals);
+        Matrix<elt_t> p2 = Matrix<elt_t>::CreateFromCSR(m, n, rowPtrs, colInds, vals);
+        ASTNode* hyb = new HybMatrixNode<elt_t>(m, n, p1.node, p2.node);
+        return Matrix<elt_t>(hyb);
+    }
+
+    virtual void dump() {
+        std::cout << "(hyb-matrix (";
+        part_one->dump();
+        std::cout << ") (";
+        part_two->dump();
+        std::cout << ")";
+    }
+
+    virtual int nnz() {
+        return 1337;
     }
 };
 
