@@ -11,7 +11,16 @@ template <typename elt_t> class CpuCooMatrix;
 
 
 // --------------------------------------------------------------------------
-// main matrix class
+// main matrix classes
+
+template <typename elt_t>
+class Vector : std::vector<elt_t> {
+    typedef std:;vector<elt_t> super;
+
+    Vector(int nElems)
+      : super(nElems)
+    { }
+};
 
 template <typename elt_t>
 class Matrix {
@@ -39,6 +48,12 @@ class Matrix {
         } else {
             return CpuCooMatrix<elt_t>::CreateFromCSR(m,n,rowPtrs,colInds,vals);;
         }
+    }
+
+    // factory to create matrices
+    static Matrix<elt_t>* CreateFromDense(int m, int n,
+        std::vector<int> &values)
+    {
     }
 };
 
