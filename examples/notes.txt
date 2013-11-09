@@ -1,0 +1,8 @@
+// database joins
+// vertex coloring in trees
+// automatic s-step methods
+// auto beamer-ize bfs?
+// ca spmv via ca nbody?
+// KI Blas?
+// implicit matrices - stencil?
+// higher order systems
