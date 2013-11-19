@@ -29,13 +29,15 @@ int main(int argc, char *argv[]) {
          y = DVec::Create(yv);
     y = M * x;
 
+    y.dump();
+
     double actual_answer = y[0];
 
     double expected_answer = 13.0;
     if (std::abs(actual_answer - expected_answer) > DBL_EPSILON)
-        printf("Error: expected %g, got %g\n", expected_answer, actual_answer);
+        fprintf(stderr, "Error: expected %g, got %g\n", expected_answer, actual_answer);
     else
-        printf("Success: got element %g\n", actual_answer);
+        fprintf(stderr, "Success: got element %g\n", actual_answer);
 
     return 0;
 }

@@ -25,17 +25,25 @@ class ASTNode {
     }
 
     virtual void dump() {
-        std::cout << "(astnode)";
+        std::cout << this << "[label=\"AstNode\"];" << std::endl;
+    }
+
+    void dumpHeader() {
+        std::cout << "graph {" << std::endl;
+    }
+
+    void dumpFooter() {
+        std::cout << "}" << std::endl;
     }
 
     ASTNode operator*(ASTNode rhs) {
         return *this;
     }
-
-    virtual std::ostream& operator<<(std::ostream& out) {
-        return out << "foo";
-    }
 };
+
+std::ostream& operator<<(std::ostream& stream, const ASTNode* node) {
+    return stream << "n" << (long) node;
+}
 
 class ASTNodeRef {
   public:
@@ -44,6 +52,12 @@ class ASTNodeRef {
     ASTNodeRef(ASTNode *o)
       : node(o)
     {  }
+
+    void dump() {
+        std::cout << "graph {" << std::endl;
+        node->dump();
+        std::cout << "}";
+    }
 };
 
 template <typename elt_t>
@@ -66,11 +80,11 @@ class MultNode : public ASTNode {
     {  }
 
     virtual void dump() {
-        std::cout << "(* ";
+        std::cout << this << " [label=\"Mult\"];" << std::endl;
         lhs->dump();
-        std::cout << " ";
         rhs->dump();
-        std::cout << ")";;
+        std::cout << this << " -- " << lhs << ";" << std::endl;
+        std::cout << this << " -- " << rhs << ";" << std::endl;
     }
 };
 
@@ -139,7 +153,7 @@ public:
 
     elt_t& operator[](int i) {
         std::vector<elt_t> tmp(10);
-        node->dump();
+
         std::cout << std::endl;
         return tmp[0];
     }
@@ -171,9 +185,7 @@ public:
     }
 
     virtual void dump() {
-        std::cout << "(cpu-csr-matrix m="
-            << super::m << " n=" << super::n
-            << " nnz=" << nnz() << ")";
+        std::cout << this << " [label=\"CpuCsrMatrix\"];" << std::endl;
     }
 
     virtual int nnz() {
@@ -209,7 +221,7 @@ public:
     }
 
     virtual void dump() {
-        std::cout << "(cpu-coo-matrix " << nnz() << ")";
+        std::cout << this << " [label=\"CpuCooMatrix\"];" << std::endl;
     }
 
     virtual int nnz() {
@@ -243,11 +255,11 @@ public:
     }
 
     virtual void dump() {
-        std::cout << "(hyb-matrix (";
+        std::cout << this << " [label=\"HybridMatrix\"];" << std::endl;
         part_one->dump();
-        std::cout << ") (";
         part_two->dump();
-        std::cout << ")";
+        std::cout << this << " -- " << part_one << std::endl;
+        std::cout << this << " -- " << part_two << std::endl;
     }
 
     virtual int nnz() {
@@ -269,7 +281,7 @@ public:
     {  }
 
     virtual void dump() {
-        std::cout << "(cpu-dense-vector nnz=" << nnz() << ")";
+        std::cout << this << " [label=\"CpuDenseVector\"];" << std::endl;
     }
 
     virtual int nnz() {
@@ -285,7 +297,7 @@ protected:
     std::vector<int> inds;
 
     virtual void dump() {
-        std::cout << "(cpu-sparse-vector " << nnz() << ")";
+        std::cout << this << " [label=\"CpuSparseVector\"];" << std::endl;
     }
 
     virtual int nnz() {
