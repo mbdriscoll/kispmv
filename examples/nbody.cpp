@@ -3,12 +3,18 @@
 
 #include <KISpMV.h>
 
+class Contact;
+
 class Particle {
     float x,y, vx,vy, ax, ay;
   public:
-    Particle& operator+=(const Particle o) {
+    inline Particle& add(const Particle o) {
         this->x += o.x;
         this->y += o.y;
+        return *this;
+    }
+
+    inline Particle& times(const Particle o, Contact& c) {
         return *this;
     }
 };
