@@ -132,6 +132,11 @@ public:
         }
     }
 
+    static Vector<elt_t> Create(std::vector<elt_t>& v)
+    {
+        return Vector( new CpuDenseVectorNode<elt_t>(v) );
+    }
+
     elt_t& operator[](int i) {
         std::vector<elt_t> tmp(10);
         node->dump();
@@ -166,7 +171,9 @@ public:
     }
 
     virtual void dump() {
-        std::cout << "(cpu-csr-matrix " << nnz() << ")";
+        std::cout << "(cpu-csr-matrix m="
+            << super::m << " n=" << super::n
+            << " nnz=" << nnz() << ")";
     }
 
     virtual int nnz() {
@@ -253,8 +260,16 @@ class CpuDenseVectorNode :
     public VectorNode<elt_t>,
     public std::vector<elt_t> {
 
+public:
+    CpuDenseVectorNode() {
+    }
+
+    CpuDenseVectorNode(std::vector<elt_t>& v) :
+        std::vector<elt_t>(v)
+    {  }
+
     virtual void dump() {
-        std::cout << "(cpu-dense-vector " << nnz() << ")";
+        std::cout << "(cpu-dense-vector nnz=" << nnz() << ")";
     }
 
     virtual int nnz() {
