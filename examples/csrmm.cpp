@@ -50,9 +50,10 @@ int main(int argc, char *argv[]) {
         rowInds[i] = rand() % m;
         colInds[i] = rand() % n;
         vals[i] = drand48() / RAND_MAX + 1.0;
+    }
 
-    KISpMV::Matrix<double> M =
-        KISpMV::Matrix<double>::CreateFromCOO(m, n, rowInds, colInds, vals);
+    KISpMV::CpuCsrMatrix<double> M =
+        KISpMV::CpuCsrMatrix<double>::CreateFromCOO(m, n, rowInds, colInds, vals);
 
     std::vector<Point> y_act;
     for (int t = 0; t < nTrials; t++)
