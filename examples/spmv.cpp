@@ -1,43 +1,27 @@
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <cfloat>
-
+#include <cstdio>
 #include <KISpMV.h>
-
-typedef KISpMV::Matrix<double> DMat;
-typedef KISpMV::Vector<double> DVec;
 
 int main(int argc, char *argv[]) {
 
-    static const int rowPtrsV[] = {0,  3,  5,  8, 11, 13,                      };
-    static const int colIndsV[] = {0,  1,  3,  0,  1,  2, 3, 4,  0, 2, 3, 1,  4};
-    static const double valsV[] = {1, -1, -3, -2,  5,  4, 6, 4, -4, 2, 7, 8, -5};
-    static const double xV[] = {1, 2, 3, 4, 5};
-    static const double yV[] = {0, 0, 0, 0, 0};
+    int nTrials = 10, seed = 13;
+    int m = 100, n = 50, nnz = 200;
+    std::vector<int> rowInds(nnz),
+                     colInds(nnz);
+    std::vector<double> vals(nnz);
+    std::vector<double> x(n, 1.0);
 
-    std::vector<int> rowPtrs(rowPtrsV, rowPtrsV+sizeof(rowPtrsV) / sizeof(int));
-    std::vector<int> colInds(colIndsV, colIndsV+sizeof(colIndsV) / sizeof(int));
-    std::vector<double> vals(valsV, valsV+sizeof(valsV) / sizeof(double));
-    std::vector<double> xv(xV, xV+sizeof(xV)/sizeof(double));
-    std::vector<double> yv(yV, yV+sizeof(yV)/sizeof(double));
-    int m = rowPtrs.size()-1,
-        n = 5;
+    srand48(seed);
+    for (int i = 0; i < nnz; i++) {
+        rowInds[i] = rand() % m;
+        colInds[i] = rand() % n;
+        vals[i] = drand48();
+    }
 
-    DMat M = DMat::CreateFromCSR(m, n, rowPtrs, colInds, vals);
-    DVec x = DVec::Create(xv),
-         y = DVec::Create(yv);
-    y = M * x;
+    KISpMV::CsrMatrix<double> M_csr = KISpMV::CsrMatrix<double>::CreateFromCOO(m, n, rowInds, colInds, vals);
+    KISpMV::CooMatrix<double> M_coo = KISpMV::CooMatrix<double>::CreateFromCOO(m, n, rowInds, colInds, vals);
 
-    y.dump();
-
-    double actual_answer = y[0];
-
-    double expected_answer = 13.0;
-    if (std::abs(actual_answer - expected_answer) > DBL_EPSILON)
-        fprintf(stderr, "Error: expected %g, got %g\n", expected_answer, actual_answer);
-    else
-        fprintf(stderr, "Success: got element %g\n", actual_answer);
+    std::vector<double> y_csr = M_csr * x;
+    std::vector<double> y_coo = M_coo * x;
 
     return 0;
 }

@@ -1,49 +1,62 @@
-#include <iostream>
-#include <vector>
+#include <cstdio>
+#include <cstdlib>
 
 #include <KISpMV.h>
 
-class Point {
-    float x, y, z;
+struct Point {
+    int x, y, z;
 
-  public:
     Point()
       : x(0), y(0), z(0)
-    { }
+    {  }
 
-    Point operator+=(const Point o) {
+    Point(float x, float y, float z)
+      : x(x), y(y), z(z)
+    {  }
+
+    bool operator==(const Point& o) const {
+        return x == o.x &&
+               y == o.y &&
+               z == o.z;
+    }
+
+    Point& operator+=(const Point& o) {
         x += o.x;
         y += o.y;
         z += o.z;
         return *this;
     }
 
-  friend Point operator*(float,Point);
+    Point operator*(const double& val) const {
+        return Point(x*val, y*val, z*val);
+    }
 };
-
-Point operator*(float f, Point rhs) {
-    Point p;
-    p.x = f * rhs.x;
-    p.y = f * rhs.y;
-    p.z = f * rhs.z;
-    return p;
-}
-
-
-typedef KISpMV::Vector<Point> VVec;
-typedef KISpMV::Matrix<float> FMat;
 
 int main(int argc, char *argv[]) {
 
-    const int m = 40, n = 40, nnz = 20;
-    std::vector<int> rowPtrs(m+1), colInds(nnz);
+    int nTrials = 100,
+        m = 100,
+        n = 100,
+        nnz = 1000,
+        seed = 13;
 
-    std::vector<float> coeffs(nnz);
-    FMat Mf = FMat::CreateFromCSR(m, n, rowPtrs, colInds, coeffs);
-    VVec xv = VVec::Create(n),
-         yv = VVec::Create(m);
-    yv = Mf * xv;
-    Point *vdata = &yv[0];
+    std::vector<int> rowInds(nnz),
+                     colInds(nnz);
+    std::vector<double> vals(nnz);
+    std::vector<Point> x(n);
+
+    srand(seed);
+    for (int i = 0; i < nnz; i++) {
+        rowInds[i] = rand() % m;
+        colInds[i] = rand() % n;
+        vals[i] = drand48() / RAND_MAX + 1.0;
+
+    KISpMV::Matrix<double> M =
+        KISpMV::Matrix<double>::CreateFromCOO(m, n, rowInds, colInds, vals);
+
+    std::vector<Point> y_act;
+    for (int t = 0; t < nTrials; t++)
+        y_act = M * x;
 
     return 0;
 }
