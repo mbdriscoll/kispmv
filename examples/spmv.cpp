@@ -1,33 +1,42 @@
 #include <cstdio>
+#include <cmath>
+#include <cfloat>
 #include <KISpMV.h>
 
 int main(int argc, char *argv[]) {
 
-    int nTrials = 10, seed = 13;
+    int nTrials = 10, seed = 14;
     int m = 10, n = 5, nnz = 10;
     std::vector<int> rowInds(nnz),
                      colInds(nnz);
-    std::vector<double> valsd(nnz);
-    std::vector<float>  valsf(nnz);
-    std::vector<double> xd(n, 1.0);
-    std::vector<float>  xf(n, 1.0);
+    std::vector<double> vals(nnz);
+    std::vector<double> x(n, 1.0);
 
     srand48(seed);
     for (int i = 0; i < nnz; i++) {
         rowInds[i] = rand() % m;
         colInds[i] = rand() % n;
-        valsf[i] = valsd[i] = drand48();
+        vals[i] = drand48();
     }
 
-    KISpMV::CpuCsrMatrix<double> M_cpucsrd = KISpMV::CpuCsrMatrix<double>::CreateFromCOO(m, n, rowInds, colInds, valsd);
-    KISpMV::CpuCsrMatrix<float>  M_cpucsrf = KISpMV::CpuCsrMatrix<float> ::CreateFromCOO(m, n, rowInds, colInds, valsf);
-    KISpMV::CpuCooMatrix<double> M_cpucood = KISpMV::CpuCooMatrix<double>::CreateFromCOO(m, n, rowInds, colInds, valsd);
-    KISpMV::GpuCooMatrix<double> M_gpucood = KISpMV::GpuCooMatrix<double>::CreateFromCOO(m, n, rowInds, colInds, valsd);
+    //KISpMV::Matrix<double,double> *M = KISpMV::Matrix<double,double>::CreateFromCOO(m, n, rowInds, colInds, vals);
+    //std::vector<double> y = M * x;
 
-    std::vector<double> y_cpucsrd = M_cpucsrd * xd;
-    std::vector<float>  y_cpucsrf = M_cpucsrf * xf;
-    std::vector<double> y_cpucood = M_cpucood * xd;
-    std::vector<double> y_gpucood = M_gpucood * xd;
+    KISpMV::Matrix<double,double> *M0 = KISpMV::CpuCsrMatrix<double,double>::CreateFromCOO(m, n, rowInds, colInds, vals);
+    KISpMV::Matrix<double,double> *M1 = KISpMV::CpuCooMatrix<double,double>::CreateFromCOO(m, n, rowInds, colInds, vals);
+
+    std::vector<double> y0 = M0 * x;
+    std::vector<double> y1 = M1 * x;
+
+    int nErrors = 0;
+    for (int i = 0; i < y0.size(); i++)
+        if (fabs(y0[i] - y1[i]) > DBL_EPSILON)
+            nErrors += 1;
+
+    if (nErrors > 0)
+        fprintf(stderr, "Error: found mistakes in %d/%d positions.\n", nErrors, (int) y0.size());
+    else
+        fprintf(stderr, "Success!\n");
 
     return 0;
 }

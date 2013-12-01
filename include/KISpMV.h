@@ -5,43 +5,20 @@
 
 namespace KISpMV {
 
-template <typename ET>
-struct CpuCooMatrix {
-    int m, n;
-    std::vector<int> rowInds;
-    std::vector<int> colInds;
-    std::vector<ET> vals;
-
-    CpuCooMatrix(int m, int n,
-            std::vector<int>& rowInds,
-            std::vector<int>& colInds,
-            std::vector<ET>& vals)
-      : m(m), n(n), rowInds(rowInds), colInds(colInds), vals(vals)
-    {  }
-
-    static CpuCooMatrix<ET> CreateFromCOO(int m, int n,
-            std::vector<int> rowInds,
-            std::vector<int> colInds,
-            std::vector<ET> vals) {
-        return CpuCooMatrix(m, n, rowInds, colInds, vals);
-    }
-};
-
-template<int dim>
 struct CooComparator {
+    int n;
     std::vector<int> &rowInds, &colInds;
 
-    CooComparator(
+    CooComparator(int n,
         std::vector<int>& rowInds,
         std::vector<int>& colInds)
-      : rowInds(rowInds), colInds(colInds)
+      : n(n), rowInds(rowInds), colInds(colInds)
     {  }
 
     bool operator()(const int& i, const int& j) const {
-        if (dim == 0)
-            return rowInds[i] < rowInds[j];
-        else if (dim == 1)
-            return colInds[i] < colInds[j];
+        int idx0 = rowInds[i]*n + colInds[i];
+        int idx1 = rowInds[j]*n + colInds[j];
+        return idx0 < idx1;
     }
 };
 
@@ -54,9 +31,85 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
     return out;
 }
 
-template <typename ET>
-struct CpuCsrMatrix {
+
+template <typename ET, typename VT>
+struct CpuCooMatrix;
+
+template <typename ET, typename VT>
+struct CpuCsrMatrix;
+
+template <typename ET, typename VT>
+struct Matrix {
     int m, n;
+
+    Matrix(int m, int n)
+      : m(m), n(n)
+    {  }
+
+    virtual std::vector<VT>
+    operator*(std::vector<VT>& x) {
+        fprintf(stderr, "No operator* defined for Matrix.\n");
+        exit(2);
+    }
+
+    static Matrix<ET,VT>* CreateFromCOO(int m, int n,
+            std::vector<int> rowInds,
+            std::vector<int> colInds,
+            std::vector<ET> vals) {
+
+        int format_id = rand() % 2;
+        switch (format_id) {
+            case 1:
+                return CpuCooMatrix<ET,VT>::CreateFromCOO(m, n, rowInds, colInds, vals);
+            case 0:
+            default:
+                return CpuCsrMatrix<ET,VT>::CreateFromCOO(m, n, rowInds, colInds, vals);
+        }
+    }
+
+};
+
+template <typename MT, typename VT>
+std::vector<VT> operator*(Matrix<MT,VT> *M, std::vector<VT> x) {
+    return (*M) * x;
+}
+
+template <typename ET, typename VT>
+struct CpuCooMatrix : public Matrix<ET,VT> {
+    typedef Matrix<ET,VT> super;
+
+    std::vector<int> rowInds;
+    std::vector<int> colInds;
+    std::vector<ET> vals;
+
+    CpuCooMatrix(int m, int n,
+            std::vector<int>& rowInds,
+            std::vector<int>& colInds,
+            std::vector<ET>& vals)
+      : super(m,n), rowInds(rowInds), colInds(colInds), vals(vals)
+    {  }
+
+    static CpuCooMatrix<ET,VT>* CreateFromCOO(int m, int n,
+            std::vector<int> rowInds,
+            std::vector<int> colInds,
+            std::vector<ET> vals) {
+        return new CpuCooMatrix(m, n, rowInds, colInds, vals);
+    }
+
+    virtual std::vector<VT>
+    operator*(std::vector<VT>& x) {
+        std::cerr << "info: running cpu coo kernel" << std::endl;
+        std::vector<VT> y(super::m, 0);
+        for (int idx = 0; idx < vals.size(); idx++)
+            y[rowInds[idx]] += x[colInds[idx]] * vals[idx];
+        return y;
+    }
+};
+
+template <typename ET, typename VT>
+struct CpuCsrMatrix : public Matrix<ET,VT> {
+    typedef Matrix<ET,VT> super;
+
     std::vector<int> rowPtrs;
     std::vector<int> colInds;
     std::vector<ET> vals;
@@ -65,10 +118,10 @@ struct CpuCsrMatrix {
             std::vector<int>& rowPtrs,
             std::vector<int>& colInds,
             std::vector<ET>& vals)
-      : m(m), n(n), rowPtrs(rowPtrs), colInds(colInds), vals(vals)
+      : super(m,n), rowPtrs(rowPtrs), colInds(colInds), vals(vals)
     {  }
 
-    static CpuCsrMatrix<ET> CreateFromCOO(int m, int n,
+    static CpuCsrMatrix<ET,VT>* CreateFromCOO(int m, int n,
             std::vector<int> rowInds,
             std::vector<int> colInds,
             std::vector<ET> vals) {
@@ -79,11 +132,8 @@ struct CpuCsrMatrix {
         for (int i = 0; i < nnz; i++)
             perm[i] = i;
 
-        CooComparator<1> sort_by_col(rowInds, colInds);
-        CooComparator<0> sort_by_row(rowInds, colInds);
-
-        std::stable_sort(perm.begin(), perm.end(), sort_by_col);
-        std::stable_sort(perm.begin(), perm.end(), sort_by_row);
+        CooComparator sort_by_idx(n, rowInds, colInds);
+        std::sort(perm.begin(), perm.end(), sort_by_idx);
 
         std::vector<int> sortedRowInds(nnz);
         std::vector<int> sortedColInds(nnz);
@@ -102,77 +152,23 @@ struct CpuCsrMatrix {
             rowCounts[ sortedRowInds[idx] ] += 1;
 
         // prefix scan to get row offsets.
-        // could be O(log(n)) but this implementation is O(n).
+        // could be O(log(n)) but this is O(n).
         std::vector<int> rowPtrs(m+1,0);
         for (int i = 0; i < m; i++)
             rowPtrs[i+1] = rowPtrs[i] + rowCounts[i];
 
-        return CpuCsrMatrix(m, n, rowPtrs, colInds, vals);
+        return new CpuCsrMatrix(m, n, rowPtrs, sortedColInds, sortedVals);
+    }
+
+    virtual std::vector<VT>
+    operator*(std::vector<VT>& x) {
+        std::cerr << "info: running cpu csr<generic> kernel" << std::endl;
+        std::vector<VT> y(super::m,0);
+        for (int i = 0; i < super::m; i++)
+            for (int idx = rowPtrs[i]; idx < rowPtrs[i+1]; idx++)
+                y[i] += x[colInds[idx]] * vals[idx];
+        return y;
     }
 };
-
-template <typename ET>
-struct GpuCooMatrix {
-    int m, n;
-    std::vector<int> rowInds;
-    std::vector<int> colInds;
-    std::vector<ET> vals;
-
-    GpuCooMatrix(int m, int n,
-            std::vector<int>& rowInds,
-            std::vector<int>& colInds,
-            std::vector<ET>& vals)
-      : m(m), n(n), rowInds(rowInds), colInds(colInds), vals(vals)
-    {  }
-
-    static GpuCooMatrix<ET> CreateFromCOO(int m, int n,
-            std::vector<int> rowInds,
-            std::vector<int> colInds,
-            std::vector<ET> vals) {
-        return GpuCooMatrix(m, n, rowInds, colInds, vals);
-    }
-};
-
-
-template <typename VT, typename MT>
-VT operator*(MT& M, VT& v);
-
-template <typename VT, typename ET>
-std::vector<VT> operator*(CpuCsrMatrix<ET>& M, std::vector<VT>& x) {
-    std::cerr << "info: running cpu csr<generic> kernel" << std::endl;
-    std::vector<VT> y(M.m);
-    for (int i = 0; i < M.m; i++)
-        for (int idx = M.rowPtrs[i]; idx < M.rowPtrs[i+1]; idx++)
-            y[i] += x[M.colInds[idx]] * M.vals[idx];
-    return y;
-}
-
-template <>
-std::vector<double> operator*(CpuCsrMatrix<double>& M, std::vector<double>& x) {
-    std::cerr << "info: running cpu csr<double> kernel" << std::endl;
-    std::vector<double> y(M.m);
-    for (int i = 0; i < M.m; i++)
-        for (int idx = M.rowPtrs[i]; idx < M.rowPtrs[i+1]; idx++)
-            y[i] += x[M.colInds[idx]] * M.vals[idx];
-    return y;
-}
-
-template <typename VT, typename ET>
-std::vector<VT> operator*(CpuCooMatrix<ET>& M, std::vector<VT>& x) {
-    std::cerr << "info: running cpu coo kernel" << std::endl;
-    std::vector<VT> y(M.m);
-    for (int idx = 0; idx < M.vals.size(); idx++)
-        y[M.rowInds[idx]] += x[M.colInds[idx]] * M.vals[idx];
-    return y;
-}
-
-template <typename VT, typename ET>
-std::vector<VT> operator*(GpuCooMatrix<ET>& M, std::vector<VT>& x) {
-    std::cerr << "warning: running gpu coo kernel on cpu" << std::endl;
-    std::vector<VT> y(M.m);
-    for (int idx = 0; idx < M.vals.size(); idx++)
-        y[M.rowInds[idx]] += x[M.colInds[idx]] * M.vals[idx];
-    return y;
-}
 
 } // namespace KISpMV
