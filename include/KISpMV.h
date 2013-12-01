@@ -99,7 +99,7 @@ struct CpuCooMatrix : public Matrix<ET,VT> {
     virtual std::vector<VT>
     operator*(std::vector<VT>& x) {
         std::cerr << "info: running cpu coo kernel" << std::endl;
-        std::vector<VT> y(super::m, 0);
+        std::vector<VT> y(super::m, VT(0));
         for (int idx = 0; idx < vals.size(); idx++)
             y[rowInds[idx]] += x[colInds[idx]] * vals[idx];
         return y;
@@ -163,7 +163,7 @@ struct CpuCsrMatrix : public Matrix<ET,VT> {
     virtual std::vector<VT>
     operator*(std::vector<VT>& x) {
         std::cerr << "info: running cpu csr<generic> kernel" << std::endl;
-        std::vector<VT> y(super::m,0);
+        std::vector<VT> y(super::m, VT(0));
         for (int i = 0; i < super::m; i++)
             for (int idx = rowPtrs[i]; idx < rowPtrs[i+1]; idx++)
                 y[i] += x[colInds[idx]] * vals[idx];

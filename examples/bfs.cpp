@@ -4,39 +4,44 @@
 
 #include <KISpMV.h>
 
-class Node {
-    int bfs_id;
-  public:
+struct Edge {
+};
 
-    Node() : bfs_id(INT_MAX) { }
+struct Node {
+    int bfs_id;
+
+    Node()
+      : bfs_id(INT_MAX-100000)
+    {  }
+
+    Node(int id)
+      : bfs_id(id)
+    {  }
 
     Node operator+=(const Node o) {
-        bfs_id = std::min(bfs_id, o.bfs_id+1);
+        bfs_id = std::min(bfs_id, o.bfs_id);
         return *this;
     }
-};
 
-class Edge {
-  public:
-    Node operator*(Node& o) {
-        return o;
+    Node operator*(const Edge& e) {
+        return Node(bfs_id+1);
     }
 };
-
-typedef KISpMV::Vector<Node> NVec;
-typedef KISpMV::Matrix<Edge> EMat;
 
 int main(int argc, char *argv[]) {
 
     const int m = 40, n = 40, nnz = 20;
-    std::vector<int> rowPtrs(m+1), colInds(nnz);
-
+    std::vector<int> rowInds(nnz), colInds(nnz);
     std::vector<Edge> edges(nnz);
-    EMat Me = EMat::CreateFromCSR(m, n, rowPtrs, colInds, edges);
-    NVec xn = NVec::Create(n),
-         yn = NVec::Create(m);
-    yn = Me * xn;
-    Node *ndata = &yn[0];
+
+    std::vector<Node> nodes(m);
+    nodes[0].bfs_id = 0;
+
+    KISpMV::Matrix<Edge,Node> *M =
+        KISpMV::Matrix<Edge,Node>::CreateFromCOO(m, n, rowInds, colInds, edges);
+
+    for (int i = 0; i < /*span*/10; i++)
+        nodes = M * nodes;
 
     return 0;
 }

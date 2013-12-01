@@ -10,6 +10,10 @@ struct Point {
       : x(0), y(0), z(0)
     {  }
 
+    Point(float val)
+      : x(val), y(val), z(val)
+    {  }
+
     Point(float x, float y, float z)
       : x(x), y(y), z(z)
     {  }
@@ -52,8 +56,8 @@ int main(int argc, char *argv[]) {
         vals[i] = drand48() / RAND_MAX + 1.0;
     }
 
-    KISpMV::CpuCsrMatrix<double> M =
-        KISpMV::CpuCsrMatrix<double>::CreateFromCOO(m, n, rowInds, colInds, vals);
+    KISpMV::Matrix<double,Point> *M =
+        KISpMV::Matrix<double,Point>::CreateFromCOO(m, n, rowInds, colInds, vals);
 
     std::vector<Point> y_act;
     for (int t = 0; t < nTrials; t++)
