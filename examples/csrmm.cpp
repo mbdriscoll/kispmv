@@ -24,14 +24,13 @@ struct Point {
                z == o.z;
     }
 
-    Point& operator+=(const Point& o) {
+    inline void pluseq(const Point& o) {
         x += o.x;
         y += o.y;
         z += o.z;
-        return *this;
     }
 
-    Point operator*(const double& val) const {
+    Point times(const Point& o, const double& val) const {
         return Point(x*val, y*val, z*val);
     }
 };

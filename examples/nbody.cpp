@@ -17,13 +17,12 @@ class Particle {
       : x(n), y(n), vx(n), vy(n), ax(n), ay(n)
     {  }
 
-    Particle& operator+=(const Particle& o) {
+    inline void pluseq(const Particle& o) {
         this->x += o.x;
         this->y += o.y;
-        return *this;
     }
 
-    Particle operator*(Contact& p) {
+    inline Particle times(const Particle& o, Contact& p) {
         return *this;
     }
 };

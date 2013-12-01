@@ -18,12 +18,11 @@ struct Node {
       : bfs_id(id)
     {  }
 
-    Node operator+=(const Node o) {
+    inline void pluseq(const Node o) {
         bfs_id = std::min(bfs_id, o.bfs_id);
-        return *this;
     }
 
-    Node operator*(const Edge& e) {
+    inline Node times(const Node& o, const Edge& e) {
         return Node(bfs_id+1);
     }
 };
